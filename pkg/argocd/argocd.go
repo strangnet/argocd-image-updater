@@ -495,6 +495,14 @@ func GetImagesFromApplication(app *v1alpha1.Application) image.ContainerImageLis
 		appImgs[img.ImageName] = img
 	}
 
+	for _, img := range *imagesFromAnnotations {
+		if appImg, ok := appImgs[img.ImageName]; ok {
+			i := *appImg
+			i.ImageAlias = img.ImageAlias
+			images = append(images, &i)
+		}
+	}
+
 	// The Application may wish to update images that don't create a container we can detect.
 	// Check the image list for images with a force-update annotation, and add them if they are not already present.
 	for _, img := range *imagesFromAnnotations {
