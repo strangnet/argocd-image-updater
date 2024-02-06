@@ -7,6 +7,7 @@ import (
 	appv1alpha1 "github.com/argoproj/argo-cd/v2/pkg/apis/application/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/argoproj-labs/argocd-image-updater/pkg/common"
 	"github.com/argoproj-labs/argocd-image-updater/test/fake"
 	"github.com/argoproj-labs/argocd-image-updater/test/fixture"
 
@@ -72,10 +73,15 @@ func Test_GetDataFromSecrets(t *testing.T) {
 
 func Test_CreateApplicationEvent(t *testing.T) {
 	t.Run("Create Event", func(t *testing.T) {
+		annotations := map[string]string{
+			common.ImageUpdaterAnnotation: "nginx:1.12.x",
+			"origin":                      "nginx:1.12.2",
+		}
 		application := &appv1alpha1.Application{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-app",
-				Namespace: "argocd",
+				Name:        "test-app",
+				Namespace:   "argocd",
+				Annotations: annotations,
 			},
 			Spec: appv1alpha1.ApplicationSpec{},
 			Status: appv1alpha1.ApplicationStatus{
@@ -84,15 +90,14 @@ func Test_CreateApplicationEvent(t *testing.T) {
 				},
 			},
 		}
-		annotations := map[string]string{
-			"origin": "nginx:1.12.2",
-		}
+
 		clientset := fake.NewFakeClientsetWithResources()
 		client := &KubernetesClient{Clientset: clientset, Namespace: "default"}
+		// client, err := NewKubernetesClientFromConfig(context.TODO(), "", true, "../../test/testdata/kubernetes/config")
 		event, err := client.CreateApplicationEvent(application, "TestEvent", "test-message", annotations)
 		require.NoError(t, err)
 		require.NotNil(t, event)
 		assert.Equal(t, "ArgocdImageUpdater", event.Source.Component)
-		assert.Equal(t, "argocd", client.Namespace)
+		assert.Equal(t, "default", client.Namespace)
 	})
 }
