@@ -22,12 +22,6 @@ import (
 	"github.com/argoproj-labs/argocd-image-updater/pkg/metrics"
 	"github.com/argoproj-labs/argocd-image-updater/pkg/registry"
 	"github.com/argoproj-labs/argocd-image-updater/pkg/version"
-
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/spf13/cobra"
-
-	"golang.org/x/sync/semaphore"
 )
 
 // newRunCommand implements "run" command
@@ -228,7 +222,6 @@ func newRunCommand() *cobra.Command {
 	runCmd.Flags().BoolVar(&disableKubernetes, "disable-kubernetes", false, "do not create and use a Kubernetes client")
 	runCmd.Flags().IntVar(&cfg.MaxConcurrency, "max-concurrency", 10, "maximum number of update threads to run concurrently")
 	runCmd.Flags().StringVar(&cfg.ArgocdNamespace, "argocd-namespace", "", "namespace where ArgoCD runs in (current namespace by default)")
-	runCmd.Flags().BoolVar(&cfg.Namespaced, "namespaced", false, "whether to use image-updater restricted to the ArgoCD namespace")
 	runCmd.Flags().StringSliceVar(&cfg.AppNamePatterns, "match-application-name", nil, "patterns to match application name against")
 	runCmd.Flags().StringVar(&cfg.AppLabel, "match-application-label", "", "label to match application labels against")
 	runCmd.Flags().BoolVar(&warmUpCache, "warmup-cache", true, "whether to perform a cache warm-up on startup")
