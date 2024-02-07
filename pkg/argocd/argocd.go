@@ -176,41 +176,41 @@ func FilterApplicationsForUpdate(apps []v1alpha1.Application, patterns []string,
 	var appsForUpdate = make(map[string]ApplicationImages)
 
 	for _, app := range apps {
-		logCtx := log.WithContext().AddField("application", app.GetName())
+		logCtx := log.WithContext().AddField("application", app.GetName()).AddField("namespace", app.GetNamespace())
 
 		sourceType := getApplicationSourceType(&app)
 
 		// Check whether application has our annotation set
 		annotations := app.GetAnnotations()
 		if _, ok := annotations[common.ImageUpdaterAnnotation]; !ok {
-			logCtx.Tracef("skipping app '%s' of type '%s' because required annotation is missing", app.GetName(), sourceType)
+			logCtx.Tracef("skipping app '%s' of type '%s' because required annotation is missing", app.QualifiedName(), sourceType)
 			continue
 		}
 
 		// Check for valid application type
 		if !IsValidApplicationType(&app) {
-			logCtx.Warnf("skipping app '%s' of type '%s' because it's not of supported source type", app.GetName(), sourceType)
+			logCtx.Warnf("skipping app '%s' of type '%s' because it's not of supported source type", app.QualifiedName(), sourceType)
 			continue
 		}
 
 		// Check if application name matches requested patterns
 		if !nameMatchesPattern(app.GetName(), patterns) {
-			logCtx.Debugf("Skipping app '%s' because it does not match requested patterns", app.GetName())
+			logCtx.Debugf("Skipping app '%s' because it does not match requested patterns", app.QualifiedName())
 			continue
 		}
 
 		// Check if application carries requested label
 		if !matchAppLabels(app.GetName(), app.GetLabels(), appLabel) {
-			logCtx.Debugf("Skipping app '%s' because it does not carry requested label", app.GetName())
+			logCtx.Debugf("Skipping app '%s' because it does not carry requested label", app.QualifiedName())
 			continue
 		}
 
-		logCtx.Tracef("processing app '%s' of type '%v'", app.GetName(), sourceType)
+		logCtx.Tracef("processing app '%s' of type '%v'", app.QualifiedName(), sourceType)
 		imageList := parseImageList(annotations)
 		appImages := ApplicationImages{}
 		appImages.Application = app
 		appImages.Images = *imageList
-		appsForUpdate[app.GetName()] = appImages
+		appsForUpdate[app.QualifiedName()] = appImages
 	}
 
 	return appsForUpdate, nil
@@ -388,6 +388,7 @@ func SetHelmImage(app *v1alpha1.Application, newImage *image.ContainerImage) err
 	}
 
 	appName := app.GetName()
+	appNamespace := app.GetNamespace()
 
 	var hpImageName, hpImageTag, hpImageSpec string
 
@@ -407,6 +408,7 @@ func SetHelmImage(app *v1alpha1.Application, newImage *image.ContainerImage) err
 	log.WithContext().
 		AddField("application", appName).
 		AddField("image", newImage.GetFullNameWithoutTag()).
+		AddField("namespace", appNamespace).
 		Debugf("target parameters: image-spec=%s image-name=%s, image-tag=%s", hpImageSpec, hpImageName, hpImageTag)
 
 	mergeParams := make([]v1alpha1.HelmParameter, 0)
@@ -484,16 +486,26 @@ func SetKustomizeImage(app *v1alpha1.Application, newImage *image.ContainerImage
 // GetImagesFromApplication returns the list of known images for the given application
 func GetImagesFromApplication(app *v1alpha1.Application) image.ContainerImageList {
 	images := make(image.ContainerImageList, 0)
+	annotations := app.Annotations
+	imagesFromAnnotations := parseImageList(annotations)
 
+	appImgs := make(map[string]*image.ContainerImage, len(app.Status.Summary.Images))
 	for _, imageStr := range app.Status.Summary.Images {
-		image := image.NewFromIdentifier(imageStr)
-		images = append(images, image)
+		img := image.NewFromIdentifier(imageStr)
+		appImgs[img.ImageName] = img
+	}
+
+	for _, img := range *imagesFromAnnotations {
+		if appImg, ok := appImgs[img.ImageName]; ok {
+			i := *appImg
+			i.ImageAlias = img.ImageAlias
+			images = append(images, &i)
+		}
 	}
 
 	// The Application may wish to update images that don't create a container we can detect.
 	// Check the image list for images with a force-update annotation, and add them if they are not already present.
-	annotations := app.Annotations
-	for _, img := range *parseImageList(annotations) {
+	for _, img := range *imagesFromAnnotations {
 		if img.HasForceUpdateOptionAnnotation(annotations) {
 			img.ImageTag = nil // the tag from the image list will be a version constraint, which isn't a valid tag
 			images = append(images, img)

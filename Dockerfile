@@ -8,9 +8,9 @@ RUN go mod download
 COPY . .
 
 RUN mkdir -p dist && \
-	make controller
+    make controller
 
-FROM alpine:latest
+FROM alpine:3.18
 
 RUN apk update && \
     apk upgrade && \

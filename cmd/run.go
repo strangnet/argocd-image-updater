@@ -10,6 +10,10 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/spf13/cobra"
+	"golang.org/x/sync/semaphore"
+	v1 "k8s.io/api/core/v1"
+
 	"github.com/argoproj-labs/argocd-image-updater/pkg/argocd"
 	"github.com/argoproj-labs/argocd-image-updater/pkg/common"
 	"github.com/argoproj-labs/argocd-image-updater/pkg/env"
@@ -18,10 +22,6 @@ import (
 	"github.com/argoproj-labs/argocd-image-updater/pkg/metrics"
 	"github.com/argoproj-labs/argocd-image-updater/pkg/registry"
 	"github.com/argoproj-labs/argocd-image-updater/pkg/version"
-
-	"github.com/spf13/cobra"
-
-	"golang.org/x/sync/semaphore"
 )
 
 // newRunCommand implements "run" command
@@ -108,7 +108,11 @@ func newRunCommand() *cobra.Command {
 			var err error
 			if !disableKubernetes {
 				ctx := context.Background()
-				cfg.KubeClient, err = getKubeConfig(ctx, cfg.ArgocdNamespace, kubeConfig)
+				ns := cfg.ArgocdNamespace
+				if !cfg.Namespaced {
+					ns = v1.NamespaceAll
+				}
+				cfg.KubeClient, err = getKubeConfig(ctx, ns, cfg.Namespaced, kubeConfig)
 				if err != nil {
 					log.Fatalf("could not create K8s client: %v", err)
 				}
@@ -125,13 +129,15 @@ func newRunCommand() *cobra.Command {
 				cfg.ClientOpts.AuthToken = token
 			}
 
-			log.Infof("ArgoCD configuration: [apiKind=%s, server=%s, auth_token=%v, insecure=%v, grpc_web=%v, plaintext=%v]",
+			log.Infof("ArgoCD configuration: [apiKind=%s, server=%s, auth_token=%v, insecure=%v, grpc_web=%v, plaintext=%v, namespaced=%v, namespace=%s]",
 				cfg.ApplicationsAPIKind,
 				cfg.ClientOpts.ServerAddr,
 				cfg.ClientOpts.AuthToken != "",
 				cfg.ClientOpts.Insecure,
 				cfg.ClientOpts.GRPCWeb,
 				cfg.ClientOpts.Plaintext,
+				cfg.Namespaced,
+				cfg.ArgocdNamespace,
 			)
 
 			// Health server will start in a go routine and run asynchronously
@@ -223,6 +229,7 @@ func newRunCommand() *cobra.Command {
 	runCmd.Flags().StringVar(&cfg.GitCommitMail, "git-commit-email", env.GetStringVal("GIT_COMMIT_EMAIL", "noreply@argoproj.io"), "E-Mail address to use for Git commits")
 	runCmd.Flags().StringVar(&commitMessagePath, "git-commit-message-path", defaultCommitTemplatePath, "Path to a template to use for Git commit messages")
 	runCmd.Flags().BoolVar(&cfg.DisableKubeEvents, "disable-kube-events", env.GetBoolVal("IMAGE_UPDATER_KUBE_EVENTS", false), "Disable kubernetes events")
+	runCmd.Flags().BoolVar(&cfg.Namespaced, "namespaced", env.GetBoolVal("IMAGE_UPDATER_NAMESPACED", false), "Use namespace-scoped K8s client")
 
 	return runCmd
 }

@@ -21,7 +21,6 @@ import (
 
 	"github.com/argoproj/argo-cd/v2/pkg/apiclient/application"
 	"github.com/argoproj/argo-cd/v2/pkg/apis/application/v1alpha1"
-	"github.com/miracl/conflate"
 	"gopkg.in/yaml.v2"
 )
 
@@ -141,6 +140,7 @@ func UpdateApplication(updateConf *UpdateConfiguration, state *SyncIterationStat
 
 	result := ImageUpdaterResult{}
 	app := updateConf.UpdateApp.Application.GetName()
+	namespace := updateConf.UpdateApp.Application.GetNamespace()
 	changeList := make([]ChangeEntry, 0)
 
 	// Get all images that are deployed with the current application
@@ -157,7 +157,10 @@ func UpdateApplication(updateConf *UpdateConfiguration, state *SyncIterationStat
 	for _, applicationImage := range updateConf.UpdateApp.Images {
 		updateableImage := applicationImages.ContainsImage(applicationImage, false)
 		if updateableImage == nil {
-			log.WithContext().AddField("application", app).Debugf("Image '%s' seems not to be live in this application, skipping", applicationImage.ImageName)
+			log.WithContext().
+				AddField("application", app).
+				AddField("namespace", namespace).
+				Debugf("Image '%s' seems not to be live in this application, skipping", applicationImage.ImageName)
 			result.NumSkipped += 1
 			continue
 		}
@@ -173,6 +176,7 @@ func UpdateApplication(updateConf *UpdateConfiguration, state *SyncIterationStat
 
 		imgCtx := log.WithContext().
 			AddField("application", app).
+			AddField("namespace", namespace).
 			AddField("registry", updateableImage.RegistryURL).
 			AddField("image_name", updateableImage.ImageName).
 			AddField("image_tag", updateableImage.ImageTag).
@@ -416,38 +420,42 @@ func marshalParamsOverride(app *v1alpha1.Application, originalData []byte) ([]by
 		}
 
 		if strings.HasPrefix(app.Annotations[common.WriteBackTargetAnnotation], common.HelmPrefix) {
-			images := GetImagesFromApplication(app)
+			values := make(map[interface{}]interface{})
+			err := yaml.Unmarshal(originalData, &values)
+			if err != nil {
+				return nil, err
+			}
 
+			newValues := make(map[string]string)
+			images := GetImagesFromApplication(app)
 			for _, c := range images {
-				helmAnnotationParamName, helmAnnotationParamVersion := getHelmParamNamesFromAnnotation(app.Annotations, c.ImageName)
+				image := c.ImageAlias
+				if image == "" {
+					image = c.ImageName
+				}
+				helmAnnotationParamName, helmAnnotationParamVersion := getHelmParamNamesFromAnnotation(app.Annotations, image)
 				if helmAnnotationParamName == "" {
-					return nil, fmt.Errorf("could not find an image-name annotation for image %s", c.ImageName)
+					return nil, fmt.Errorf("could not find an image-name annotation for image %s", image)
 				}
 				if helmAnnotationParamVersion == "" {
-					return nil, fmt.Errorf("could not find an image-tag annotation for image %s", c.ImageName)
+					return nil, fmt.Errorf("could not find an image-tag annotation for image %s", image)
 				}
 
 				helmParamName := getHelmParam(appSource.Helm.Parameters, helmAnnotationParamName)
 				if helmParamName == nil {
 					return nil, fmt.Errorf("%s parameter not found", helmAnnotationParamName)
 				}
+				newValues[helmAnnotationParamName] = helmParamName.Value
 
 				helmParamVersion := getHelmParam(appSource.Helm.Parameters, helmAnnotationParamVersion)
 				if helmParamVersion == nil {
 					return nil, fmt.Errorf("%s parameter not found", helmAnnotationParamVersion)
 				}
-
-				// Build string with YAML format to merge with originalData values
-				helmValues := fmt.Sprintf("%s: %s\n%s: %s", helmAnnotationParamName, helmParamName.Value, helmAnnotationParamVersion, helmParamVersion.Value)
-
-				var mergedParams *conflate.Conflate
-				mergedParams, err = conflate.FromData(originalData, []byte(helmValues))
-				if err != nil {
-					return nil, err
-				}
-
-				override, err = mergedParams.MarshalYAML()
+				newValues[helmAnnotationParamVersion] = helmParamVersion.Value
 			}
+
+			mergeHelmValues(values, newValues)
+			override, _ = yaml.Marshal(values)
 		} else {
 			var params helmOverride
 			newParams := helmOverride{
@@ -489,6 +497,23 @@ func mergeHelmOverride(t *helmOverride, o *helmOverride) {
 			continue
 		}
 		t.Helm.Parameters = append(t.Helm.Parameters, param)
+	}
+}
+
+func mergeHelmValues(values map[interface{}]interface{}, newValues map[string]string) {
+	for fieldPath, newValue := range newValues {
+		fields := strings.Split(fieldPath, ".")
+		lastFieldIndex := len(fields) - 1
+		node := values
+		for i, name := range fields {
+			if i == lastFieldIndex {
+				node[name] = newValue
+				break
+			} else if _, ok := node[name]; !ok {
+				node[name] = make(map[interface{}]interface{})
+			}
+			node = node[name].(map[interface{}]interface{})
+		}
 	}
 }
 
