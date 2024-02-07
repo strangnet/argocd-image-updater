@@ -10,6 +10,10 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/spf13/cobra"
+	"golang.org/x/sync/semaphore"
+	v1 "k8s.io/api/core/v1"
+
 	"github.com/argoproj-labs/argocd-image-updater/pkg/argocd"
 	"github.com/argoproj-labs/argocd-image-updater/pkg/common"
 	"github.com/argoproj-labs/argocd-image-updater/pkg/env"
@@ -18,9 +22,6 @@ import (
 	"github.com/argoproj-labs/argocd-image-updater/pkg/metrics"
 	"github.com/argoproj-labs/argocd-image-updater/pkg/registry"
 	"github.com/argoproj-labs/argocd-image-updater/pkg/version"
-	"github.com/spf13/cobra"
-	"golang.org/x/sync/semaphore"
-	v1 "k8s.io/api/core/v1"
 )
 
 // newRunCommand implements "run" command
