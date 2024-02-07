@@ -127,7 +127,7 @@ func (client *KubernetesClient) CreateApplicationEvent(app *appv1alpha1.Applicat
 		Reason:         reason,
 	}
 
-	result, err := client.Clientset.CoreV1().Events(app.ObjectMeta.GetNamespace()).Create(client.Context, &event, metav1.CreateOptions{})
+	result, err := client.Clientset.CoreV1().Events(client.Namespace).Create(client.Context, &event, metav1.CreateOptions{})
 	if err != nil {
 		return nil, err
 	}
