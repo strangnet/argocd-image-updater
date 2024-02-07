@@ -453,20 +453,10 @@ func marshalParamsOverride(app *v1alpha1.Application, originalData []byte) ([]by
 					return nil, fmt.Errorf("%s parameter not found", helmAnnotationParamVersion)
 				}
 				newValues[helmAnnotationParamVersion] = helmParamVersion.Value
-
-				// Build string with YAML format to merge with originalData values
-				// helmValues := fmt.Sprintf("%s: %s\n%s: %s", helmAnnotationParamName, helmParamName.Value, helmAnnotationParamVersion, helmParamVersion.Value)
-
-				// var mergedParams *conflate.Conflate
-				// mergedParams, err = conflate.FromData(originalData, []byte(helmValues))
-				// if err != nil {
-				// 	return nil, err
-				// }
-
-				// override, err = mergedParams.MarshalYAML()
 			}
+
 			mergeHelmValues(values, newValues)
-			override, err = yaml.Marshal(values)
+			override, _ = yaml.Marshal(values)
 		} else {
 			var params helmOverride
 			newParams := helmOverride{
