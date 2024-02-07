@@ -428,9 +428,6 @@ func marshalParamsOverride(app *v1alpha1.Application, originalData []byte) ([]by
 
 			newValues := make(map[string]string)
 			images := GetImagesFromApplication(app)
-
-			newValues := make(map[string]string)
-			images := GetImagesFromApplication(app)
 			for _, c := range images {
 				image := c.ImageAlias
 				if image == "" {
