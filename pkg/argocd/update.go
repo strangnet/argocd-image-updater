@@ -421,10 +421,13 @@ func marshalParamsOverride(app *v1alpha1.Application, originalData []byte) ([]by
 
 		if strings.HasPrefix(app.Annotations[common.WriteBackTargetAnnotation], common.HelmPrefix) {
 			values := make(map[interface{}]interface{})
-			err = yaml.Unmarshal(originalData, &values)
+			err := yaml.Unmarshal(originalData, &values)
 			if err != nil {
 				return nil, err
 			}
+
+			newValues := make(map[string]string)
+			images := GetImagesFromApplication(app)
 
 			newValues := make(map[string]string)
 			images := GetImagesFromApplication(app)
@@ -452,11 +455,10 @@ func marshalParamsOverride(app *v1alpha1.Application, originalData []byte) ([]by
 					return nil, fmt.Errorf("%s parameter not found", helmAnnotationParamVersion)
 				}
 				newValues[helmAnnotationParamVersion] = helmParamVersion.Value
-
-				mergeHelmValues(values, newValues)
-
-				override, err = yaml.Marshal(values)
 			}
+
+			mergeHelmValues(values, newValues)
+			override, _ = yaml.Marshal(values)
 		} else {
 			var params helmOverride
 			newParams := helmOverride{

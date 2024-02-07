@@ -110,7 +110,7 @@ func Test_UpdateApplication(t *testing.T) {
 			Clientset: fake.NewFakeKubeClient(),
 		}
 		annotations := map[string]string{
-			common.ImageUpdaterAnnotation: "jannfis/foobar:>=1.0.1",
+			common.ImageUpdaterAnnotation: "jannfis/foobar:1.0.0",
 		}
 		appImages := &ApplicationImages{
 			Application: v1alpha1.Application{
@@ -172,7 +172,7 @@ func Test_UpdateApplication(t *testing.T) {
 			Clientset: fake.NewFakeKubeClient(),
 		}
 		annotations := map[string]string{
-			common.ImageUpdaterAnnotation: "jannfis/foobar:>=1.0.0,jannfis/barbar:>=1.0.0",
+			common.ImageUpdaterAnnotation: "jannfis/foobar:1.0.0,jannfis/barbar:1.0.0",
 		}
 		appImages := &ApplicationImages{
 			Application: v1alpha1.Application{

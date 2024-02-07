@@ -10,6 +10,10 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/spf13/cobra"
+	"golang.org/x/sync/semaphore"
+	v1 "k8s.io/api/core/v1"
+
 	"github.com/argoproj-labs/argocd-image-updater/pkg/argocd"
 	"github.com/argoproj-labs/argocd-image-updater/pkg/common"
 	"github.com/argoproj-labs/argocd-image-updater/pkg/env"
@@ -131,7 +135,7 @@ func newRunCommand() *cobra.Command {
 				cfg.ClientOpts.AuthToken = token
 			}
 
-			log.Infof("ArgoCD configuration: [apiKind=%s, server=%s, auth_token=%v, insecure=%v, grpc_web=%v, plaintext=%v, namespaced=%v, namespace=%v]",
+			log.Infof("ArgoCD configuration: [apiKind=%s, server=%s, auth_token=%v, insecure=%v, grpc_web=%v, plaintext=%v, namespaced=%v, namespace=%s]",
 				cfg.ApplicationsAPIKind,
 				cfg.ClientOpts.ServerAddr,
 				cfg.ClientOpts.AuthToken != "",
@@ -232,6 +236,7 @@ func newRunCommand() *cobra.Command {
 	runCmd.Flags().StringVar(&cfg.GitCommitMail, "git-commit-email", env.GetStringVal("GIT_COMMIT_EMAIL", "noreply@argoproj.io"), "E-Mail address to use for Git commits")
 	runCmd.Flags().StringVar(&commitMessagePath, "git-commit-message-path", defaultCommitTemplatePath, "Path to a template to use for Git commit messages")
 	runCmd.Flags().BoolVar(&cfg.DisableKubeEvents, "disable-kube-events", env.GetBoolVal("IMAGE_UPDATER_KUBE_EVENTS", false), "Disable kubernetes events")
+	runCmd.Flags().BoolVar(&cfg.Namespaced, "namespaced", env.GetBoolVal("IMAGE_UPDATER_NAMESPACED", false), "Use namespace-scoped K8s client")
 
 	return runCmd
 }

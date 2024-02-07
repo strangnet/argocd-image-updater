@@ -8,7 +8,7 @@ RUN go mod download
 COPY . .
 
 RUN mkdir -p dist && \
-	make controller
+    make controller
 
 FROM alpine:3.18
 

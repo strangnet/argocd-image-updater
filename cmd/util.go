@@ -39,9 +39,9 @@ func getKubeConfig(ctx context.Context, namespace string, namespaced bool, kubeC
 	}
 
 	if fullKubeConfigPath != "" {
-		log.Debugf("Creating Kubernetes client from %s for namespace %s", fullKubeConfigPath, namespace)
+		log.Debugf("Creating Kubernetes client from %s for namespace '%s'", fullKubeConfigPath, namespace)
 	} else {
-		log.Debugf("Creating in-cluster Kubernetes client for namespace %s", namespace)
+		log.Debugf("Creating in-cluster Kubernetes client for namespace '%s'", namespace)
 	}
 
 	kubeClient, err = kube.NewKubernetesClientFromConfig(ctx, namespace, namespaced, fullKubeConfigPath)

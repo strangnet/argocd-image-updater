@@ -23,13 +23,14 @@ import (
 
 func Test_GetImagesFromApplication(t *testing.T) {
 	t.Run("Get list of images from application", func(t *testing.T) {
+		annotations := map[string]string{
+			common.ImageUpdaterAnnotation: "nginx:1.12.2, that/image, quay.io/dexidp/dex:v1.23.0",
+		}
 		application := &v1alpha1.Application{
 			ObjectMeta: v1.ObjectMeta{
-				Name:      "test-app",
-				Namespace: "argocd",
-				Annotations: map[string]string{
-					common.ImageUpdaterAnnotation: "nginx:1.12.2, that/image, quay.io/dexidp/dex:v1.23.0",
-				},
+				Name:        "test-app",
+				Namespace:   "argocd",
+				Annotations: annotations,
 			},
 			Spec: v1alpha1.ApplicationSpec{},
 			Status: v1alpha1.ApplicationStatus{

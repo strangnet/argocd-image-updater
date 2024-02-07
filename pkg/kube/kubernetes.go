@@ -68,7 +68,7 @@ func NewKubernetesClientFromConfig(ctx context.Context, namespace string, namesp
 		return nil, err
 	}
 
-	log.Debugf("Creating kubernetes client for ns '%s'", namespace)
+	log.Debugf("Creating Kubernetes client for ns '%s'", namespace)
 	return NewKubernetesClient(ctx, clientset, applicationsClientset, namespace), nil
 }
 
